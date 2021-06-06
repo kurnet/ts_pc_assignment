@@ -10,6 +10,7 @@ interface CoreData {
     baseScore : number,
     nextVal : number,
     step : number,
+    level : number;
     isStarted : boolean,
     UsedBlock : number
 };
@@ -37,35 +38,37 @@ export class Core extends ScriptTypeBase  {
     txtStep : pc.ElementComponent;
 
     // set of data for game core need
-    gameData : CoreData = {
-        score : 0,
-        multiply : 1,
-        baseScore : 7,
-        nextVal : 0,
-        step : 0,
-        isStarted : false,
-        UsedBlock : 0
-    };
+    gameData : CoreData;
 
     // holding the instance of UI
     sharedUIMgr : UIMgr;
 
     initialize(){
         Core._sharedInc = this;
+        this.gameData = {
+            score : 0,
+            multiply : 1,
+            baseScore : 7,
+            nextVal : 0,
+            step : 0,
+            level : 1,
+            isStarted : false,
+            UsedBlock : 0
+        };
 
         this.BlockerEntity.enabled = true;
 
-        let i, j;
+        let i :number, j :number;
         for(j = 0; j < Core.MAX_BLOCK; ++j) {
             this.ans[j] = [];
             for(i = 0; i < Core.MAX_BLOCK; ++i){
-                let _node = this.BlockNode.clone();
+                let _node :pc.Entity = this.BlockNode.clone();
     
                 //_node.entity.translate(1.5 + i*0.5, 0, 0);
                 _node.setPosition(-1.5 + j * 0.5, -1.5 + i * 0.5, 0);
-                if(_node.script.has('nodeObject')){
+                if(_node.script.has('NodeObject')){
                    
-                    let _nodeObj = <NodeObject> _node.script.get('nodeObject');
+                    let _nodeObj:NodeObject = <NodeObject> _node.script.get('NodeObject');
 
                     _nodeObj.gridX = j;
                     _nodeObj.gridY = i;
@@ -89,8 +92,7 @@ export class Core extends ScriptTypeBase  {
         this.gameData.step = Helper.GetRandomNumber(10, 10);
         // this.txtStep.text = "Step : " + this.gameData.step;
 
-        this.app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);
-
+        this.app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);;
     }
 
     postInitialize(){
@@ -98,19 +100,18 @@ export class Core extends ScriptTypeBase  {
         this.sharedUIMgr.showGameOver(false);
 
         this.randomInit();
-
     }
     
     update( dt: number){
         // Debug purpose to check data control
         //this.printDebug();
-        
     }
 
     // reset the game status when needed
     reset(){
         this.addScore(-this.gameData.score, true);
         this.gameData.step = Helper.GetRandomNumber(10, 10);
+        this.gameData.level = 1;
         this.gameData.UsedBlock = 0;
         this.txtStep.text = "Step : " + this.gameData.step;
         this.genNext();
@@ -144,18 +145,18 @@ export class Core extends ScriptTypeBase  {
     // get the mouse/touch to raycast the Gird for drop node
     onMouseDown(e : pc.MouseEvent) {
 
-        let from = this.entity.camera.screenToWorld(e.x, e.y, this.entity.camera.nearClip);
-        let to = this.entity.camera.screenToWorld(e.x, e.y, this.entity.camera.farClip);
+        let from:pc.Vec3 = this.entity.camera.screenToWorld(e.x, e.y, this.entity.camera.nearClip);
+        let to:pc.Vec3 = this.entity.camera.screenToWorld(e.x, e.y, this.entity.camera.farClip);
         
         // TODO:// that the this.app.system cannot found rigidbody at Typescript but it work to added ignore at thie moment
         //@ts-ignore
         let result : pc.RaycastResult = this.app.systems.rigidbody.raycastFirst(from, to);
 
         if (result) {
-            let pickedEntity = result.entity;
+            let pickedEntity:pc.Entity = result.entity;
 
-            if(pickedEntity.script?.get('nodeObject')){
-                let _nodeObj = <NodeObject> pickedEntity.script.get('nodeObject');
+            if(pickedEntity.script?.get('NodeObject')){
+                let _nodeObj:NodeObject = <NodeObject> pickedEntity.script.get('NodeObject');
 
                 
                 this.BlockerEntity.enabled = true;
@@ -170,9 +171,9 @@ export class Core extends ScriptTypeBase  {
 
     // debug purpose if needed to show on screen text
     printDebug() {
-        let _txt = "";
+        let _txt:string = "";
         
-        let i, j;
+        let i:number, j:number;
         for(j = 6; j >= 0; --j) {
             for(i = 0; i < Core.MAX_BLOCK; ++i){
                 _txt = _txt + this.ans[i][j].Val + " ";
@@ -183,7 +184,7 @@ export class Core extends ScriptTypeBase  {
         
         this.txtDebug.text = _txt;
 
-        let _maxBlock = Core.MAX_BLOCK * Core.MAX_BLOCK;
+        let _maxBlock: number = Core.MAX_BLOCK * Core.MAX_BLOCK;
         this.txtDebug.text = this.gameData.UsedBlock + " / " + _maxBlock;
         
     };
@@ -191,7 +192,7 @@ export class Core extends ScriptTypeBase  {
     // next node show up 
     private genNext() {
         this.gameData.nextVal = Helper.GetRandomNumber(9, 1);
-        (this.BlockNode.script.get("nodeObject") as NodeObject).setVal(this.gameData.nextVal);
+        (this.BlockNode.script.get('NodeObject') as NodeObject).setVal(this.gameData.nextVal);
         
         this.BlockNode.enabled = true;
     };
@@ -205,7 +206,9 @@ export class Core extends ScriptTypeBase  {
             if(this.isFullFilled()){
                 _res = -1;
             }else{
-                this.gameData.step = Helper.GetRandomNumber(10, 10);
+                this.gameData.level++;
+                let _nextStep = Math.max(Helper.GetRandomNumber(10, 10) - this.gameData.level, 5);
+                this.gameData.step = _nextStep;
                 this.insertRow();
                 _res = 1;
             }
@@ -247,23 +250,45 @@ export class Core extends ScriptTypeBase  {
 
     // drop the node at the specfic column
     private dropNode (x : number, num : number) : boolean {
-        let i;
+        let i: number;
+        let _tarNode:NodeObject;
+
         for(i = 0; i < Core.MAX_BLOCK; ++i){
             if(this.ans[x][i].Val == 0){
-                this.ans[x][i].setVal(num);
+                //this.ans[x][i].setVal(num);
                 this.gameData.UsedBlock++;
+
+                _tarNode = this.ans[x][i];
                 break;
             }
         }
         if(i == 7){return false;}
         
         // wait for scan puzzle need to solve, should be animation here
-        setTimeout(this.scanPuzzleNeedToSolve, 100, this);
-
-        //this.scanPuzzleNeedTOSolve();
-        
+        //setTimeout(this.scanPuzzleNeedToSolve, 250, this);
+        this.addDummyDropAnime(x, num, _tarNode);
         return true;
     };
+
+    private addDummyDropAnime(x:number, num:number, targetNode:NodeObject){
+        let _pos:pc.Vec3 = this.ans[x][6].entity.getPosition();
+        _pos.y += 0.5;
+
+        let _dummy:pc.Entity = this.BlockNode.clone();
+        this.BlockNode.parent.addChild(_dummy);
+        _dummy.setPosition(_pos);
+        
+        let _yDiff:number =  targetNode.entity.getPosition().y - _pos.y;
+        let _yDur:number = Math.abs((_yDiff/2.5) * 0.2);
+
+        let _nodeScript:NodeObject = <NodeObject>_dummy.script.get('NodeObject');
+        _nodeScript.MoveTo(new pc.Vec2(0, _yDiff), _yDur, (node:NodeObject)=>{
+            node.entity.destroy();
+            targetNode.setVal(num);
+
+            this.scanPuzzleNeedToSolve(this);
+        });
+    }
 
     // scan puzzle and remark any solve needed
     private scanPuzzleNeedToSolve(_core : Core){
@@ -276,19 +301,19 @@ export class Core extends ScriptTypeBase  {
         }
 
         // should be animation play when found detected node to solve
-        setTimeout(_core.processMarkedNode, 200, _core);
+        setTimeout(_core.processMarkedNode, 300, _core);
     }
 
     // remove and sort the empty space out
     private processMarkedNode(_core : Core){
-        let _pClean =_core.CheckAndCleanMarked();
-        let _pSort = _core.sortBlock();
+        let _pClean : boolean =_core.CheckAndCleanMarked();
+        let _pSort : boolean = _core.sortBlock();
         if(_pClean || _pSort){
             // if any change made on the board have to scan puzzle again until nothing change, and score got multiply
             _core.gameData.multiply+=4;
             setTimeout(_core.scanPuzzleNeedToSolve, 200, _core);
         }else{
-            let _gameStatus = _core.moreStep();
+            let _gameStatus : number = _core.moreStep();
             if(!_gameStatus){
                 // happen nothing if the step is not yet need to insert row
                 _core.gameData.multiply = 1;
@@ -313,7 +338,7 @@ export class Core extends ScriptTypeBase  {
         this.ans[x][y].setVal(0);
         this.gameData.UsedBlock--;
         
-        let _close = 0;
+        let _close :number = 0;
         while(_close < 4){
             let _nextNode:NodeObject = null;
             switch(_close){
@@ -356,10 +381,10 @@ export class Core extends ScriptTypeBase  {
 
     // sort down to fill the empty space
     private sortBlock() {
-        let _sorted = false;
+        let _sorted :boolean = false;
         let i, j;
         for(j = 0; j < Core.MAX_BLOCK; ++j) {
-            let _empty = -1;
+            let _empty :number = -1;
             for(i = 0; i < Core.MAX_BLOCK; ++i){
                 if(this.ans[j][i].Val > 0 && _empty != -1){
                     this.ans[j][_empty].setVal(this.ans[j][i].Val);
@@ -382,8 +407,8 @@ export class Core extends ScriptTypeBase  {
 
     // check column if any matched node will marked
     private checkVert(x : number) {
-        let y;
-        let _max = 0;
+        let y :number;
+        let _max :number = 0;
         for(y = 6; y>=0; --y){
             if(this.ans[x][y].Val > 0 && _max == 0){
                 _max = y + 1;
@@ -404,9 +429,9 @@ export class Core extends ScriptTypeBase  {
         for(x = 0; x <= Core.MAX_BLOCK; ++x){
             if( x == Core.MAX_BLOCK || this.ans[x][y].Val == 0){
                 if(_max > 0){
-                    let _chk = _max;
+                    let _chk:number = _max;
                     while(_chk > 0){
-                        let sx = x - _chk;
+                        let sx:number = x - _chk;
                         if(this.ans[sx][y].Val == _max){
                             this.ans[sx][y].setMarked(true);
                         }
