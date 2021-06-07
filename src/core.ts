@@ -3,6 +3,7 @@ import { createScript, ScriptTypeBase, attrib } from "../lib/create-script-decor
 import { NodeObject } from "./nodeObject";
 import { UIMgr } from "./UI/uimgr";
 import { Helper } from "./helper/helper";
+import { NodeData } from "./data/nodeData";
 
 interface CoreData {
     score : number,
@@ -30,6 +31,7 @@ export class Core extends ScriptTypeBase  {
     @attrib({type:'entity'}) nextText: pc.Entity;
     @attrib({type:'entity'}) stepText: pc.Entity;
     @attrib({type:'entity'}) UIMgrEntity: pc.Entity;
+    @attrib({type:'asset', assetType:'json'}) nodeData : pc.Asset;
 
     ans: Array<Array<NodeObject>> = [];
     txtDebug : pc.ElementComponent;
@@ -39,6 +41,7 @@ export class Core extends ScriptTypeBase  {
 
     // set of data for game core need
     gameData : CoreData;
+    nodePrecent : NodeData;
 
     // holding the instance of UI
     sharedUIMgr : UIMgr;
@@ -92,6 +95,7 @@ export class Core extends ScriptTypeBase  {
         this.gameData.step = Helper.GetRandomNumber(10, 10);
         // this.txtStep.text = "Step : " + this.gameData.step;
 
+        this.nodePrecent = new NodeData(this.nodeData.resource);
         this.app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);;
     }
 
@@ -133,7 +137,7 @@ export class Core extends ScriptTypeBase  {
         for(x = 0; x < Core.MAX_BLOCK; ++x){
             for(y = 0; y < Core.MAX_BLOCK; ++y){
                 if(Math.random() > 0.6){
-                    this.ans[x][y].setVal(Helper.GetRandomNumber(9, 1), true);
+                    this.ans[x][y].setVal(this.getNewNodeValue(), true);
                     this.gameData.UsedBlock++;
                 }
             }
@@ -191,11 +195,27 @@ export class Core extends ScriptTypeBase  {
 
     // next node show up 
     private genNext() {
-        this.gameData.nextVal = Helper.GetRandomNumber(9, 1);
+        this.gameData.nextVal = this.getNewNodeValue();
         (this.BlockNode.script.get('NodeObject') as NodeObject).setVal(this.gameData.nextVal);
         
         this.BlockNode.enabled = true;
     };
+
+    private getNewNodeValue() : number{
+        let _p: number = Helper.GetRandomNumber(100, 0);
+        let _count: number = 0;
+
+        let vi:number = 0;
+        for(vi = 0; vi < this.nodePrecent.NodePrecent.length; ++vi){
+            let _precent = this.nodePrecent.NodePrecent[vi];
+            _count += _precent;
+            if(_p <= _count){
+                return vi+1;
+            }
+        }
+        
+        return 0;
+    }
 
     // check need or not insert row and gameover if no space to add row
     // check the result of every step made, 0 - normal, 1 - created new row, -1 - game over
