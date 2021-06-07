@@ -41,7 +41,7 @@ export class Core extends ScriptTypeBase  {
 
     // set of data for game core need
     gameData : CoreData;
-    nodePrecent : NodeData;
+    nodePercent : NodeData;
 
     // holding the instance of UI
     sharedUIMgr : UIMgr;
@@ -95,7 +95,7 @@ export class Core extends ScriptTypeBase  {
         this.gameData.step = Helper.GetRandomNumber(10, 10);
         // this.txtStep.text = "Step : " + this.gameData.step;
 
-        this.nodePrecent = new NodeData(this.nodeData.resource);
+        this.nodePercent = new NodeData(this.nodeData.resource);
         this.app.mouse.on(pc.EVENT_MOUSEDOWN, this.onMouseDown, this);;
     }
 
@@ -202,13 +202,13 @@ export class Core extends ScriptTypeBase  {
     };
 
     private getNewNodeValue() : number{
-        let _p: number = Helper.GetRandomNumber(100, 0);
+        let _p: number = Helper.GetRandomNumber(this.nodePercent.MaxPercent, 0);
         let _count: number = 0;
 
         let vi:number = 0;
-        for(vi = 0; vi < this.nodePrecent.NodePrecent.length; ++vi){
-            let _precent = this.nodePrecent.NodePrecent[vi];
-            _count += _precent;
+        for(vi = 0; vi < this.nodePercent.NodePercent.length; ++vi){
+            let _percent = this.nodePercent.NodePercent[vi];
+            _count += _percent;
             if(_p <= _count){
                 return vi+1;
             }
